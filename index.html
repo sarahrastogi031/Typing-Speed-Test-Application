@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Typing Speed Test Application</title>
+<link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+<style>
+:root{--bg:#eef5f3;--card:#fff;--text:#1b2a28;--muted:#5f7370;--accent:#0f766e;--line:#d3e2de;--ok:#0f766e;--bad:#dc2626;--badbg:#fee2e2;--cur:#fde68a;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1816;--card:#16231f;--text:#e5f1ee;--muted:#9bb3ae;--accent:#2dd4bf;--line:#2a3f3a;--ok:#2dd4bf;--bad:#f87171;--badbg:#4a1d1d;--cur:#5a4a12;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1816;--card:#16231f;--text:#e5f1ee;--muted:#9bb3ae;--accent:#2dd4bf;--line:#2a3f3a;--ok:#2dd4bf;--bad:#f87171;--badbg:#4a1d1d;--cur:#5a4a12;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh;display:flex;justify-content:center;padding:24px 14px}
+.app{width:100%;max-width:680px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;height:fit-content}
+h1{margin:0 0 4px;font-size:1.5rem}
+.sub{margin:0 0 16px;color:var(--muted);font-size:.9rem}
+.stats{display:flex;gap:10px;margin-bottom:14px}
+.stats div{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center;color:var(--muted);font-size:.8rem}
+.stats b{display:block;font-size:1.5rem;color:var(--text)}
+#passage{font-family:Georgia,"Times New Roman",serif;font-size:1.2rem;line-height:1.8;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);user-select:none}
+#passage .ok{color:var(--ok)}
+#passage .bad{color:var(--bad);background:var(--badbg)}
+#passage .cur{background:var(--cur)}
+textarea{width:100%;height:90px;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:1rem;font-family:inherit;resize:none}
+.row{display:flex;gap:8px;margin-top:12px;align-items:center}
+select,button{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);font-size:.95rem;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#04201c;font-weight:600}
+#result{margin-top:14px;padding:12px;border-radius:10px;border:1px solid var(--accent);display:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<main class="app">
+  <h1 style="display:flex;align-items:center;gap:10px"><img src="images/logo.svg" alt="Logo" width="36" height="36">Typing Speed Test</h1>
+  <p class="sub">Type the passage below. The timer starts when you press your first key.</p>
+  <div class="stats">
+    <div>Time left<b id="time">60</b></div>
+    <div>Speed (WPM)<b id="wpm">0</b></div>
+    <div>Accuracy<b id="acc">100%</b></div>
+  </div>
+  <div id="passage" aria-label="Passage to type"></div>
+  <textarea id="input" placeholder="Start typing here..." aria-label="Typing area" autocomplete="off" spellcheck="false"></textarea>
+  <div class="row">
+    <label for="dur" class="sub" style="margin:0">Duration</label>
+    <select id="dur"><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">120 s</option></select>
+    <button class="primary" id="restart" style="margin-left:auto">New test</button>
+  </div>
+  <div id="result" aria-live="polite"></div>
+</main>
+<script>
+var PASSAGES=[
+"Practice makes a person faster and more accurate. Keep your eyes on the screen, relax your hands and let each finger find its own key.",
+"A web page is built from three layers. HTML gives it structure, CSS gives it style and JavaScript makes it respond to the people who use it.",
+"Good programmers write code that other people can read. Clear names, small functions and honest comments save hours of confusion later."
+];
+var text="",timer=null,left=60,total=60,started=false,done=false,errors=0,best=0;
+var P=document.getElementById("passage"),I=document.getElementById("input");
+function load(){
+  clearInterval(timer);started=false;done=false;errors=0;
+  total=left=parseInt(document.getElementById("dur").value,10);
+  text=PASSAGES[Math.floor(Math.random()*PASSAGES.length)];
+  I.value="";I.disabled=false;I.focus();
+  document.getElementById("result").style.display="none";
+  document.getElementById("time").textContent=left;
+  document.getElementById("wpm").textContent=0;
+  document.getElementById("acc").textContent="100%";
+  paint("");
+}
+function paint(v){
+  var h="";
+  for(var i=0;i<text.length;i++){
+    var c=text[i].replace("&","&amp;").replace("<","&lt;");
+    var cls=i<v.length?(v[i]===text[i]?"ok":"bad"):(i===v.length?"cur":"");
+    h+='<span class="'+cls+'">'+c+'</span>';
+  }
+  P.innerHTML=h;
+}
+function stats(){
+  var v=I.value,correct=0;
+  for(var i=0;i<v.length;i++) if(v[i]===text[i]) correct++;
+  var mins=(total-left)/60||1/60;
+  var wpm=Math.round((correct/5)/mins);
+  var acc=v.length?Math.round(correct/v.length*100):100;
+  return {wpm:wpm,acc:acc};
+}
+function tick(){
+  left--;document.getElementById("time").textContent=left;
+  var s=stats();document.getElementById("wpm").textContent=s.wpm;
+  if(left<=0) finish();
+}
+function finish(){
+  if(done) return;done=true;clearInterval(timer);I.disabled=true;
+  var s=stats();if(s.wpm>best) best=s.wpm;
+  document.getElementById("wpm").textContent=s.wpm;
+  document.getElementById("acc").textContent=s.acc+"%";
+  var r=document.getElementById("result");
+  r.style.display="block";
+  r.textContent="Finished! Speed: "+s.wpm+" WPM, accuracy: "+s.acc+"%. Best this session: "+best+" WPM.";
+}
+I.addEventListener("input",function(){
+  if(done) return;
+  if(!started){started=true;timer=setInterval(tick,1000);}
+  paint(I.value);
+  var s=stats();document.getElementById("acc").textContent=s.acc+"%";
+  if(I.value.length>=text.length) finish();
+});
+document.getElementById("restart").onclick=load;
+document.getElementById("dur").onchange=load;
+load();
+</script>
+</body>
+</html>
